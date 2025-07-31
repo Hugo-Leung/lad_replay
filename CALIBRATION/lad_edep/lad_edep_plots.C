@@ -33,9 +33,9 @@ struct hist_params {
 };
 
 const hist_params time_params    = {100, 1700.0, 2000.0};
-const hist_params dt_params      = {200, -2, 8};
-const hist_params adc_amp_params = {200, 0.0, 400.0};
-const hist_params adc_int_params = {200, 0.0, 40.0};
+const hist_params dt_params      = {50, -2, 8};
+const hist_params adc_amp_params = {50, 0.0, 500.0};
+const hist_params adc_int_params = {50, 0.0, 40.0};
 
 const double TDC2NS = 0.09766; // TDC to ns conversion factor
 const double ADC2NS = 0.0625;  // ADC to ns conversion factor
@@ -54,8 +54,39 @@ const string side_names[N_SIDES]   = {"Top", "Btm"};
 double proton_cut_time[2][N_PADDLES] = {{3.5, 3, 5.5, 3, 3, 5, 4, 3.5, 3.5, 2.5, 3},
                                         {3, 0, 4, 5, 5, 2, 4.5, 4.5, 4, 0, 4}};
 
-const double janky_diff_time_calib[2][N_PADDLES] = {{-0.25, 0.4, -1.6, 0.5, 0.7, -1.5, 0, 0.6, 0.3, 1, 0.7},
-                                                    {1.1, 0.2, -0.1, -0.4, -0.9, 2, -0.7, -0.2, 0.25, 2, -0.3}};
+double cut_line_pt1[2]   = {0, 200}; // Point 1 for cut line
+const double cut_line_pt2[2]   = {3, -100};   // Point 2 for cut line
+
+//const double janky_diff_time_calib[2][N_PADDLES] = {{-0.25, 0.4, -1.6, 0.5, 0.7, -1.5, 0, 0.6, 0.3, 1, 0.7},
+//                                                    {1.1, 0.2, -0.1, -0.4, -0.9, 2, -0.7, -0.2, 0.25, 2, -0.3}};
+//  const double janky_diff_time_calib[2][N_PADDLES] = {{0.0, 0.0, 0.2, 0.5, 0.0, 0.0, 0.0, 1.0, 0.0, 0.3, 0.3},
+//                                                    {-0.3, -6.0, 0, -0.5, 0, 0, 0, 0, 0, -4, 0}};
+
+const double janky_diff_time_calib[2][N_PADDLES] = {{ 1.62359, 1.53077, 1.63463, 1.66097,  1.89953, 2.0405, 1.71907,  1.57178,  1.79619, 2.04213, 1.64894},
+{3.51064, 7.40795,1.88654, 1.89266, 2.23984,  1.76925, 2.05659, 1.69364, 1.41959, 5.58603,  1.75344}}; //These numbers come from the calibration of run 23038 (CA)
+
+vector<TString> get_file_names(const string &filename, double &beam_charge = *(new double(-1))) {
+  vector<TString> fileNames;
+  ifstream infile(filename);
+  string line;
+  while (getline(infile, line)) {
+    // Check for beam charge line
+    size_t pos = line.find("IBCM4B_CHARGE=");
+    if (pos != string::npos) {
+      try {
+        beam_charge = stod(line.substr(pos + 14));
+      } catch (...) {
+        // Ignore parse errors
+      }
+      continue;
+    }
+    // Skip empty lines and lines starting with '#'
+    if (line.empty() || line[0] == '#' || line.find(".root") == string::npos)
+      continue;
+    fileNames.push_back(TString(line));
+  }
+  return fileNames;
+}
 
 TLegend *make_legend(TCanvas *c) {
   // Create and draw a new legend
@@ -314,13 +345,26 @@ void process_chunk(int i_thread, int start, int end, std::vector<TString> &fileN
           if (matching_plane < plane) {
             tdc_diff = -tdc_diff; // Reverse sign for the second plane
           }
-          // if (plane / 2 < 2)
-          //   tdc_diff += janky_diff_time_calib[plane / 2][bar];
+          if (plane / 2 < 2)
+            tdc_diff -= janky_diff_time_calib[plane / 2][bar];
           // Fill the histograms with the TDC difference
           hist_map["h_time_avg_punchthrough"][plane][bar]->Fill(hodo_hit_time[plane][bar]);
           hist_map["h_TDC_Diff_bar"][plane][bar]->Fill(tdc_diff);
-          hist_map["h_TDC_Diff_vs_ADC_Int"][plane][bar]->Fill(tdc_diff, hodo_hit_edep[plane][bar]);
-          hist_map["h_TDC_Diff_vs_ADC_Amp"][plane][bar]->Fill(tdc_diff, hodo_hit_adc_amp[plane][bar]);
+          
+          bool is_proton = false;
+
+          double m = (cut_line_pt2[1] - cut_line_pt1[1]) / (cut_line_pt2[0] - cut_line_pt1[0]);
+          double b = cut_line_pt1[1] - m * cut_line_pt1[0];
+          if (((hodo_hit_adc_amp[plane][bar] > m * tdc_diff + b)&&plane> matching_plane) ||
+              ((hodo_hit_adc_amp[matching_plane][bar] > m * tdc_diff + b)&&plane< matching_plane)) {
+            is_proton = true; // Proton
+          }
+          if (is_proton) {
+            if ((hodo_hit_adc_amp[matching_plane][bar]>100&&plane<matching_plane) || (hodo_hit_adc_amp[plane][bar]>100&&plane>matching_plane)){
+              hist_map["h_TDC_Diff_vs_ADC_Int"][plane][bar]->Fill(tdc_diff, hodo_hit_edep[plane][bar]);
+              hist_map["h_TDC_Diff_vs_ADC_Amp"][plane][bar]->Fill(tdc_diff, hodo_hit_adc_amp[plane][bar]);
+            }
+          }
           // Fill the Front vs Back ADC Integral and Amplitude histograms
           hist_map["h_Front_Back_ADC_Int"][plane][bar]->Fill(hodo_hit_edep[plane][bar],
                                                              hodo_hit_edep[matching_plane][bar]);
@@ -364,10 +408,25 @@ int lad_edep_plots() {
       "/cache/hallc/c-lad/analysis/ehingerl/online_v1/LAD_COIN_23106_0_6_-1.root",
       "/cache/hallc/c-lad/analysis/ehingerl/online_v1/LAD_COIN_23107_0_6_-1.root",
       "/cache/hallc/c-lad/analysis/ehingerl/online_v1/LAD_COIN_23108_0_6_-1.root",
+      "/cache/hallc/c-lad/analysis/ehingerl/online_v1/LAD_COIN_23109_0_6_-1.root",
+      "/cache/hallc/c-lad/analysis/ehingerl/online_v1/LAD_COIN_23109_0_6_-1_1.root",
   };
+  /*std::vector<TString> fileNames;
+  std::vector<TString> tmpList= get_file_names("../../run-lists/all_C10_13deg_runlist.dat");
+  fileNames.insert(fileNames.end(), tmpList.begin(), tmpList.end());
+  tmpList= get_file_names("../../run-lists/all_C10_17deg_runlist.dat");
+  fileNames.insert(fileNames.end(), tmpList.begin(), tmpList.end());
+  tmpList= get_file_names("../../run-lists/all_C3_23105_23109_runlist.dat");
+  fileNames.insert(fileNames.end(), tmpList.begin(), tmpList.end());
+  tmpList= get_file_names("../../run-lists/all_C5_13deg_runlist.dat");
+  fileNames.insert(fileNames.end(), tmpList.begin(), tmpList.end());
+  tmpList= get_file_names("../../run-lists/all_C5_17deg_runlist.dat");
+  fileNames.insert(fileNames.end(), tmpList.begin(), tmpList.end());
+*/
   // "/volatile/hallc/c-lad/ehingerl/lad_replay/ROOTfiles/LAD_COIN/PRODUCTION/LAD_COIN_22616_0_21_-1.root"};
   // "/volatile/hallc/c-lad/ehingerl/lad_replay/ROOTfiles/LAD_COIN/PRODUCTION/LAD_COIN_22382_0_21_-1_1.root"};
   TString outputFileName = Form("lad_edep_plots_new_timing_%c.root", spec_prefix);
+  //TString outputFileName = Form("all_C10_17deg_%c.root", spec_prefix);
 
   // Create a TChain to combine the trees from multiple files
   TChain *chain = new TChain("T");
