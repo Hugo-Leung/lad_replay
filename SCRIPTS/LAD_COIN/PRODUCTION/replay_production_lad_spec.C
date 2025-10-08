@@ -333,6 +333,8 @@ void replay_production_lad_spec(int RunNumber = 0, int MaxEvent = 0, int run_typ
   // tests/cuts, loops over Acpparatus's and PhysicsModules,
   // and executes the output routines.
   THcAnalyzer *analyzer = new THcAnalyzer;
+  analyzer->EnableAltEvType(true);
+  
 
   // A simple event class to be output to the resulting tree.
   // Creating your own descendant of THaEvent is one way of
