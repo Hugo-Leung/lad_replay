@@ -125,11 +125,11 @@ void replay_production_lad_spec(int RunNumber = 0, int MaxEvent = 0, int run_typ
 
   //(CA)
   TString REPORTFileName;
-  REPORTFileNamePattern = "REPORT_OUTPUT/LAD_COIN/PRODUCTION/replayReport_LAD_coin_production_%d_%d_%d_%d.report";
-  REPORTFileName        = Form(REPORTFileNamePattern, RunNumber, FirstSegment, MaxSegment, MaxEvent);
+  REPORTFileNamePattern = "REPORT_OUTPUT/LAD_COIN/PRODUCTION/replayReport_LAD_coin_production_%d_%d_%d_%d_%d.report";
+  REPORTFileName        = Form(REPORTFileNamePattern, RunNumber, FirstSegment, MaxSegment, FirstEvent, MaxEvent);
 
-  ROOTFileNamePattern = "ROOTfiles/LAD_COIN/PRODUCTION/LAD_COIN_%d_%d_%d_%d.root";
-  ROOTFileName        = Form(ROOTFileNamePattern, RunNumber, FirstSegment, MaxSegment, MaxEvent);
+  ROOTFileNamePattern = "ROOTfiles/LAD_COIN/PRODUCTION/LAD_COIN_%d_%d_%d_%d_%d.root";
+  ROOTFileName        = Form(ROOTFileNamePattern, RunNumber, FirstSegment, MaxSegment, FirstEvent, MaxEvent);
   // ROOTFileNamePattern = "ROOTfiles/LAD_COIN/PRODUCTION/LAD_COIN_production_hall_%d_%d.root";
   // ROOTFileNamePattern = "ROOTfiles/LAD_COIN/CALIBRATION/LAD_COIN_calibration_hall_%d_%d.root";
 
@@ -368,14 +368,14 @@ void replay_production_lad_spec(int RunNumber = 0, int MaxEvent = 0, int run_typ
   run->SetRunParamClass("THcRunParameters");
 
   // Eventually need to learn to skip over, or properly analyze the pedestal events
-  run->SetEventRange(1, MaxEvent); // Physics Event number, does not include scaler or control events.
+  run->SetEventRange(FirstEvent, FirstEvent+MaxEvent); // Physics Event number, does not include scaler or control events.
   run->SetNscan(1);
   run->SetDataRequired(0x7);
   run->Print();
 
   // Moved file naming from here to top of script for transparency.
 
-  analyzer->SetCountMode(2); // 0 = counter is # of physics triggers
+  analyzer->SetCountMode(1); // 0 = counter is # of physics triggers
                              // 1 = counter is # of all decode reads
                              // 2 = counter is event number
   analyzer->SetEvent(event);
