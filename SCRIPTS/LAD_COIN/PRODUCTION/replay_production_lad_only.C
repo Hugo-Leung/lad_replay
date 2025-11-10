@@ -1,11 +1,54 @@
 #include "LADFilteredStreamBuf.h"
 #include "MultiFileRun.h"
+#include "THcLADKine.h" // Include the header for THcLADKine
+#include <fstream>
 #include <iostream>
+#include <sstream>
+#include <string>
+#include <vector>
 
-// #include "../../LAD/LAD_link_defs.h" //Leave this line commented. Used for debugging purposes only.
+#include "../../LAD/LAD_link_defs.h" //Leave this line commented. Used for debugging purposes only.
 
-void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type = 1, int FirstEvent = 1,
-                              int MaxSegment = 1, int FirstSegment = 0, const char *fname_prefix = "shms_all") {
+// Returns 1 if runNumber has a GEM CM PED file, 0 otherwise
+void load_GEM_CM_PED(int runNumber) {
+  std::vector<int> ped_cm_runs;
+  int ped_cm_runs_count = 0;
+
+  // Open the file
+  std::ifstream infile("PARAM/LAD/GEM/lgem_cm_ped_runs.param");
+  if (infile) {
+    std::string content((std::istreambuf_iterator<char>(infile)), std::istreambuf_iterator<char>());
+    std::stringstream ss(content);
+    std::string token;
+    while (std::getline(ss, token, ',')) {
+      std::stringstream token_ss(token);
+      int value;
+      if (token_ss >> value) {
+        ped_cm_runs.push_back(value);
+      }
+    }
+    ped_cm_runs_count = ped_cm_runs.size();
+  } else {
+    std::cerr << "Error: Could not open PARAM/LAD/GEM/lgem_cm_ped_runs.param" << std::endl;
+    ped_cm_runs_count = 0;
+  }
+  std::sort(ped_cm_runs.begin(), ped_cm_runs.end());
+
+  int ped_cm_file_num = ped_cm_runs[ped_cm_runs_count - 1]; // Default to the last run number in the list
+  for (int i = ped_cm_runs_count - 1; i > 0; --i) {
+    if (ped_cm_runs[i] < runNumber) {
+      ped_cm_file_num = ped_cm_runs[i];
+      break;
+    }
+  }
+
+  gHcParms->AddString("lgem_pedfile", Form("PARAM/LAD/GEM/PED/gem_ped_%d.dat", ped_cm_file_num));
+  gHcParms->AddString("lgem_cmfile", Form("PARAM/LAD/GEM/CM/CommonModeRange_%d.txt", ped_cm_file_num));
+  return;
+}
+
+void replay_production_lad_only(int RunNumber = 0, int MaxEvent = 0, int run_type = 1, int FirstEvent = 1,
+                                int MaxSegment = 0, int FirstSegment = 0) {
 
   // Get RunNumber and MaxEvent if not provided.
   if (RunNumber == 0) {
@@ -29,17 +72,15 @@ void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type 
   const char *RunFileNamePattern;
   const char *SummaryFileNamePattern;
   const char *REPORTFileNamePattern;
+
   if (MaxSegment == -1) {
     RunFileNamePattern = "%s_%05d.dat";
   } else {
-    // This will not pick up NPS runs since the run number was not padded
     RunFileNamePattern = "%s_%05d.dat.%u";
-    // NPS Segment Pattern, for testing
-    // RunFileNamePattern = "%s_%d.dat.%u";
   }
-  vector<TString> pathList;
+  vector<string> pathList;
   pathList.push_back(".");
-  pathList.push_back("./raw");
+  pathList.push_back("./raw/");
   pathList.push_back("./raw/../raw.copiedtotape");
   pathList.push_back("./cache");
   pathList.push_back("/cache/hallc/c-lad/raw/");
@@ -47,82 +88,52 @@ void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type 
   const char *ROOTFileNamePattern;
   TString ROOTFileName;
   pathList.push_back("/volatile/hallc/c-lad/ehingerl/raw_data/LAD_cosmic");
-  ROOTFileNamePattern = "ROOTfiles/LAD_COIN/PRODUCTION//SPEC_ONLY_%d_%d.root";
-  // ROOTFileNamePattern = "ROOTfiles/LAD_COIN/PRODUCTION/LAD_COIN_production_hall_%d_%d.root";
-  // ROOTFileNamePattern = "ROOTfiles/LAD_COIN/CALIBRATION/LAD_COIN_calibration_hall_%d_%d.root";
+
+  const char *fname_prefix;
   switch (run_type) {
   case 0:
-    RunFileNamePattern = "lad_Production_%02d.dat.0";
+    fname_prefix = "lad_Production";
     break;
   case 1:
-    RunFileNamePattern = "lad_Production_noGEM_%02d.dat.0";
+    fname_prefix = "lad_Production_noGEM";
     break;
   case 2:
-    RunFileNamePattern = "lad_LADwGEMwROC2_%02d.dat.0";
+    fname_prefix = "lad_LADwGEMwROC2";
     break;
   case 3:
-    RunFileNamePattern = "lad_GEMonly_%02d.dat.0";
+    fname_prefix = "lad_GEMonly";
     break;
   case 4:
-    RunFileNamePattern = "lad_LADonly_%02d.dat.0";
+    fname_prefix = "lad_LADonly";
     break;
   case 5:
-    RunFileNamePattern = "lad_SHMS_HMS_%02d.dat.0";
+    fname_prefix = "lad_SHMS_HMS";
     break;
   case 6:
-    RunFileNamePattern = "lad_SHMS_%02d.dat.0";
+    fname_prefix = "lad_SHMS";
     break;
   case 7:
-    RunFileNamePattern = "lad_HMS_%02d.dat.0";
+    fname_prefix = "lad_HMS";
     break;
   default:
     cout << "Invalid run type: " << run_type << ". Please enter a valid run type." << endl;
     return;
     break;
   }
-  ROOTFileName = Form(ROOTFileNamePattern, RunNumber, MaxEvent);
 
   //(CA)
   TString REPORTFileName;
-  REPORTFileNamePattern = "REPORT_OUTPUT/LAD_COIN/PRODUCTION/replayReport_LAD_coin_production_%d_%d_%d.report";
-  REPORTFileName        = Form(REPORTFileNamePattern, RunNumber, FirstEvent, MaxEvent);
+  REPORTFileNamePattern =
+      "REPORT_OUTPUT/LAD_COIN/PRODUCTION/replayReport_LAD_coin_production_lad_only_%d_%d_%d_%d.report";
+  REPORTFileName = Form(REPORTFileNamePattern, RunNumber, FirstSegment, MaxSegment, MaxEvent);
 
-  // LHE. End temp.
-  //  Many experiments use separate path for each spectrometer SHMS, HMS, COIN
-  //  There are subdirectories for PRODUCTION, SCALER, 50K, etc.
-  //  This is similar to the pathing for REPORT_OUTPUT and Summary files
-  //  Changing the 50K replay loaction will effect run_ scripts in UTIL_OL
-  //  All other replays, save to production
-  //  50K and default format: runNumber, FirstEvent, MaxEvent
-  //  For the segment format: runNumber, FirstSegment, FirstEvent, MaxEvent
-  //  Segments have different naming to avoid name collisions
+  ROOTFileNamePattern = "ROOTfiles/LAD_COIN/PRODUCTION/LAD_COIN_lad_only_%d_%d_%d_%d.root";
+  ROOTFileName        = Form(ROOTFileNamePattern, RunNumber, FirstSegment, MaxSegment, MaxEvent);
+  // ROOTFileNamePattern = "ROOTfiles/LAD_COIN/PRODUCTION/LAD_COIN_production_hall_%d_%d.root";
+  // ROOTFileNamePattern = "ROOTfiles/LAD_COIN/CALIBRATION/LAD_COIN_calibration_hall_%d_%d.root";
 
-  // if (MaxEvent == 50000 && FirstEvent == 1) {
-  //   REPORTFileNamePattern  = "REPORT_OUTPUT/SHMS/PRODUCTION/replay_shms_all_production_%d_%d_%d.report";
-  //   SummaryFileNamePattern = "REPORT_OUTPUT/SHMS/PRODUCTION/summary_all_production_%d_%d_%d.report";
-  //   ROOTFileNamePattern    = "ROOTfiles/shms_replay_production_all_%d_%d_%d.root";
-  // } else if (MaxEvent == -1 && (FirstSegment - MaxSegment) == 0) {
-  //   REPORTFileNamePattern  = "REPORT_OUTPUT/SHMS/PRODUCTION/replay_shms_all_production_%d_%d_%d_%d.report";
-  //   SummaryFileNamePattern = "REPORT_OUTPUT/SHMS/PRODUCTION/summary_all_production_%d_%d_%d_%d.report";
-  //   ROOTFileNamePattern    = "ROOTfiles/shms_replay_production_all_%d_%d_%d_%d.root";
-  // } else {
-  //   REPORTFileNamePattern  = "REPORT_OUTPUT/SHMS/PRODUCTION/replay_shms_all_production_%d_%d_%d.report";
-  //   SummaryFileNamePattern = "REPORT_OUTPUT/SHMS/PRODUCTION/summary_all_production_%d_%d_%d.report";
-  //   ROOTFileNamePattern    = "ROOTfiles/shms_replay_production_all_%d_%d_%d.root";
-  // }
-  // // Define the analysis parameters
-  // TString ROOTFileName;
-  // TString REPORTFileName;
-  // TString SummaryFileName;
-  // if (MaxEvent == -1 && (FirstSegment - MaxSegment) == 0) {
-  //   REPORTFileName  = Form(REPORTFileNamePattern, RunNumber, FirstSegment, FirstEvent, MaxEvent);
-  //   SummaryFileName = Form(SummaryFileNamePattern, RunNumber, FirstSegment, FirstEvent, MaxEvent);
-  //   ROOTFileName    = Form(ROOTFileNamePattern, RunNumber, FirstSegment, FirstEvent, MaxEvent);
-  // } else {
-  //   REPORTFileName  = Form(REPORTFileNamePattern, RunNumber, FirstEvent, MaxEvent);
-  //   SummaryFileName = Form(SummaryFileNamePattern, RunNumber, FirstEvent, MaxEvent);
-  //   ROOTFileName    = Form(ROOTFileNamePattern, RunNumber, FirstEvent, MaxEvent);
-  // }
+  // LHE.
+  // Consider changing naming scheme for root files. Also, consider adding summary file (in addition to report file).
 
   // Load global parameters
   gHcParms->Define("gen_run_number", "Run Number", RunNumber);
@@ -138,7 +149,6 @@ void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type 
 
   if (RunNumber > 22589)
     gHcParms->Load("PARAM/LAD/HODO/lhodo_cuts_May16.param");
-
   // Load the Hall C detector map
   // Load map depending on whether run is before or after SHMS DC swap
   gHcDetectorMap = new THcDetectorMap();
@@ -149,6 +159,7 @@ void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type 
   else
     gHcDetectorMap->Load("MAPS/LAD_COIN/DETEC/coin_lad_5pass_May14.map");
 
+  // load_GEM_CM_PED(RunNumber);
   // Add the dec data class for debugging
   // Podd::DecData *decData = new Podd::DecData("D", "Decoder Raw Data");
   // gHaApps->Add(decData);
@@ -174,29 +185,30 @@ void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type 
   SHMS->AddEvtType(6);
   SHMS->AddEvtType(7);
   gHaApps->Add(SHMS);
-  // Add Noble Gas Cherenkov to SHMS apparatus
-  THcCherenkov *ngcer = new THcCherenkov("ngcer", "Noble Gas Cherenkov");
-  SHMS->AddDetector(ngcer);
-  // Add drift chambers to SHMS apparatus
-  THcDC *pdc = new THcDC("dc", "Drift Chambers");
-  SHMS->AddDetector(pdc);
-  // Add hodoscope to SHMS apparatus
-  THcHodoscope *phod = new THcHodoscope("hod", "Hodoscope");
-  SHMS->AddDetector(phod);
-  // Add Heavy Gas Cherenkov to SHMS apparatus
-  THcCherenkov *phgcer = new THcCherenkov("hgcer", "Heavy Gas Cherenkov");
-  SHMS->AddDetector(phgcer);
-  // Add Aerogel Cherenkov to SHMS apparatus
-  THcAerogel *aero = new THcAerogel("aero", "Aerogel");
-  SHMS->AddDetector(aero);
-  // Add calorimeter to SHMS apparatus
-  THcShower *pcal = new THcShower("cal", "Calorimeter");
-  SHMS->AddDetector(pcal);
+  // // Add Noble Gas Cherenkov to SHMS apparatus
+  // THcCherenkov *ngcer = new THcCherenkov("ngcer", "Noble Gas Cherenkov");
+  // SHMS->AddDetector(ngcer);
+  // // Add drift chambers to SHMS apparatus
+  // THcDC *pdc = new THcDC("dc", "Drift Chambers");
+  // SHMS->AddDetector(pdc);
+  // // Add hodoscope to SHMS apparatus
+  // THcHodoscope *phod = new THcHodoscope("hod", "Hodoscope");
+  // SHMS->AddDetector(phod);
+  // // Add Heavy Gas Cherenkov to SHMS apparatus
+  // THcCherenkov *phgcer = new THcCherenkov("hgcer", "Heavy Gas Cherenkov");
+  // SHMS->AddDetector(phgcer);
+  // // Add Aerogel Cherenkov to SHMS apparatus
+  // THcAerogel *aero = new THcAerogel("aero", "Aerogel");
+  // SHMS->AddDetector(aero);
+  // // Add calorimeter to SHMS apparatus
+  // THcShower *pcal = new THcShower("cal", "Calorimeter");
+  // SHMS->AddDetector(pcal);
 
-  // THcLADHodoscope *shms_lhod = new THcLADHodoscope("ladhod", "LAD Hodoscope");
-  // SHMS->AddDetector(shms_lhod);
+  THcLADHodoscope *shms_lhod = new THcLADHodoscope("ladhod", "LAD Hodoscope");
+  SHMS->AddDetector(shms_lhod);
 
   // THcLADGEM *shms_gem = new THcLADGEM("gem", "gem");
+  // shms_gem->setIgnoreVertex(true);
   // SHMS->AddDetector(shms_gem);
 
   // Add rastered beam apparatus
@@ -204,20 +216,24 @@ void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type 
   gHaApps->Add(pbeam);
   // Add physics modules
   // Calculate reaction point
-  THcReactionPoint *prp = new THcReactionPoint("P.react", "SHMS reaction point", "P", "P.rb");
-  gHaPhysics->Add(prp);
-  // Calculate extended target corrections
-  THcExtTarCor *pext = new THcExtTarCor("P.extcor", "HMS extended target corrections", "P", "P.react");
-  gHaPhysics->Add(pext);
-  // Calculate golden track quantites
-  THaGoldenTrack *gtr = new THaGoldenTrack("P.gtr", "SHMS Golden Track", "P");
-  gHaPhysics->Add(gtr);
-  // Calculate primary (scattered beam - usually electrons) kinematics
-  THcPrimaryKine *pkin = new THcPrimaryKine("P.kin", "SHMS Single Arm Kinematics", "P", "P.rb");
-  gHaPhysics->Add(pkin);
-  // Calculate the hodoscope efficiencies
-  THcHodoEff *peff = new THcHodoEff("phodeff", "SHMS hodo efficiency", "P.hod");
-  gHaPhysics->Add(peff);
+  // THcReactionPoint *prp = new THcReactionPoint("P.react", "SHMS reaction point", "P", "P.rb");
+  // gHaPhysics->Add(prp);
+  // // Calculate extended target corrections
+  // THcExtTarCor *pext = new THcExtTarCor("P.extcor", "HMS extended target corrections", "P", "P.react");
+  // gHaPhysics->Add(pext);
+  // // Calculate golden track quantites
+  // THaGoldenTrack *gtr = new THaGoldenTrack("P.gtr", "SHMS Golden Track", "P");
+  // gHaPhysics->Add(gtr);
+  // // Calculate primary (scattered beam - usually electrons) kinematics
+  // THcPrimaryKine *pkin = new THcPrimaryKine("P.kin", "SHMS Single Arm Kinematics", "P", "P.rb");
+  // gHaPhysics->Add(pkin);
+  // // Calculate the hodoscope efficiencies
+  // THcHodoEff *peff = new THcHodoEff("phodeff", "SHMS hodo efficiency", "P.hod");
+  // gHaPhysics->Add(peff);
+
+  // Can I leave this??
+  // THcLADKine *ladkin_p = new THcLADKine("P.ladkin", "LAD Kinematics", "P", "P.kin", "P.react");
+  // gHaPhysics->Add(ladkin_p);
 
   // Add event handler for scaler events
   THcScalerEvtHandler *pscaler = new THcScalerEvtHandler("P", "Hall C scaler event type 1");
@@ -245,48 +261,53 @@ void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type 
   HMS->AddEvtType(7);
   gHaApps->Add(HMS);
   // Add drift chambers to HMS apparatus
-  THcDC *hdc = new THcDC("dc", "Drift Chambers");
-  HMS->AddDetector(hdc);
-  // Add hodoscope to HMS apparatus
-  THcHodoscope *hhod = new THcHodoscope("hod", "Hodoscope");
-  HMS->AddDetector(hhod);
-  // Add Cherenkov to HMS apparatus
-  THcCherenkov *hcer = new THcCherenkov("cer", "Heavy Gas Cherenkov");
-  HMS->AddDetector(hcer);
+  // THcDC *hdc = new THcDC("dc", "Drift Chambers");
+  // HMS->AddDetector(hdc);
+  // // Add hodoscope to HMS apparatus
+  // THcHodoscope *hhod = new THcHodoscope("hod", "Hodoscope");
+  // HMS->AddDetector(hhod);
+  // // Add Cherenkov to HMS apparatus
+  // THcCherenkov *hcer = new THcCherenkov("cer", "Heavy Gas Cherenkov");
+  // HMS->AddDetector(hcer);
   // Add Aerogel Cherenkov to HMS apparatus
   // THcAerogel* aero = new THcAerogel("aero", "Aerogel");
   // HMS->AddDetector(aero);
   // Add calorimeter to HMS apparatus
-  THcShower *hcal = new THcShower("cal", "Calorimeter");
-  HMS->AddDetector(hcal);
+  // THcShower *hcal = new THcShower("cal", "Calorimeter");
+  // HMS->AddDetector(hcal);
 
-  // THcLADHodoscope *hms_lhod = new THcLADHodoscope("ladhod", "LAD Hodoscope");
-  // HMS->AddDetector(hms_lhod);
+  THcLADHodoscope *hms_lhod = new THcLADHodoscope("ladhod", "LAD Hodoscope");
+  HMS->AddDetector(hms_lhod);
 
   // THcLADGEM *hms_gem = new THcLADGEM("gem", "gem");
+  // hms_gem->setIgnoreVertex(true);
   // HMS->AddDetector(hms_gem);
 
   // Add rastered beam apparatus
-  THaApparatus *hbeam = new THcRasteredBeam("H.rb", "Rastered Beamline");
-  gHaApps->Add(hbeam);
-  // Add physics modules
-  // Calculate reaction point
-  THcReactionPoint *hrp = new THcReactionPoint("H.react", "HMS reaction point", "H", "H.rb");
-  gHaPhysics->Add(hrp);
-  // Calculate extended target corrections
-  THcExtTarCor *hext = new THcExtTarCor("H.extcor", "HMS extended target corrections", "H", "H.react");
-  gHaPhysics->Add(hext);
-  // Calculate golden track quantities
-  THaGoldenTrack *hgtr = new THaGoldenTrack("H.gtr", "HMS Golden Track", "H");
-  gHaPhysics->Add(hgtr);
+  // THaApparatus *hbeam = new THcRasteredBeam("H.rb", "Rastered Beamline");
+  // gHaApps->Add(hbeam);
+  // // Add physics modules
+  // // Calculate reaction point
+  // THcReactionPoint *hrp = new THcReactionPoint("H.react", "HMS reaction point", "H", "H.rb");
+  // gHaPhysics->Add(hrp);
+  // // Calculate extended target corrections
+  // THcExtTarCor *hext = new THcExtTarCor("H.extcor", "HMS extended target corrections", "H", "H.react");
+  // gHaPhysics->Add(hext);
+  // // Calculate golden track quantities
+  // THaGoldenTrack *hgtr = new THaGoldenTrack("H.gtr", "HMS Golden Track", "H");
+  // gHaPhysics->Add(hgtr);
 
   // Calculate primary (scattered beam - usually electrons) kinematics
-  THcPrimaryKine *hkin = new THcPrimaryKine("H.kin", "HMS Single Arm Kinematics", "H", "H.rb");
-  gHaPhysics->Add(hkin);
+  // THcPrimaryKine *hkin = new THcPrimaryKine("H.kin", "HMS Single Arm Kinematics", "H", "H.rb");
+  // gHaPhysics->Add(hkin);
 
-  // Calculate the hodoscope efficiencies
-  THcHodoEff *heff = new THcHodoEff("hhodeff", "HMS hodo efficiency", "H.hod");
-  gHaPhysics->Add(heff);
+  // // Calculate the hodoscope efficiencies
+  // THcHodoEff *heff = new THcHodoEff("hhodeff", "HMS hodo efficiency", "H.hod");
+  // gHaPhysics->Add(heff);
+
+  // Can I leave this?
+  // THcLADKine *ladkin_h = new THcLADKine("H.ladkin", "LAD Kinematics", "H", "H.kin", "H.react");
+  // gHaPhysics->Add(ladkin_h);
 
   // Add event handler for prestart event 125.
   THcConfigEvtHandler *ev125 = new THcConfigEvtHandler("HC", "Config Event type 125");
@@ -325,23 +346,24 @@ void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type 
   // THcRun* run = new THcRun( pathList, Form(RunFileNamePattern, RunNumber) );
   // Could lead to an infinite loop, all segments in range analyzed.
 
-  // vector<string> fileNames = {};
-  // TString codafilename;
-  // if (MaxSegment == -1) {
-  //   cout << RunFileNamePattern;
-  //   codafilename.Form(RunFileNamePattern, fname_prefix, RunNumber);
-  //   cout << "codafilename = " << codafilename << endl;
-  //   fileNames.emplace_back(codafilename.Data());
-  // } else {
-  //   for (Int_t iseg = FirstSegment; iseg <= MaxSegment; iseg++) {
-  //     codafilename.Form(RunFileNamePattern, fname_prefix, RunNumber, iseg);
-  //     cout << "codafilename = " << codafilename << endl;
-  //     fileNames.emplace_back(codafilename.Data());
-  //   }
-  // }
-  // auto *run = new Podd::MultiFileRun(pathList, fileNames);
-  THcRun *run =
-      new THcRun(pathList, Form(RunFileNamePattern, RunNumber)); // FIXME: Ultimately will want to use MiltiFileRun
+  vector<string> fileNames = {};
+  TString codafilename;
+  if (MaxSegment == -1) {
+    cout << RunFileNamePattern;
+    codafilename.Form(RunFileNamePattern, fname_prefix, RunNumber);
+    cout << "codafilename = " << codafilename << endl;
+    fileNames.emplace_back(codafilename.Data());
+  } else {
+    for (Int_t iseg = FirstSegment; iseg <= MaxSegment; iseg++) {
+      codafilename.Form(RunFileNamePattern, fname_prefix, RunNumber, iseg);
+      cout << "codafilename = " << codafilename << endl;
+      fileNames.emplace_back(codafilename.Data());
+    }
+  }
+
+  auto *run = new Podd::MultiFileRun(pathList, fileNames);
+  // THcRun *run =
+  //     new THcRun(pathList, Form(RunFileNamePattern, RunNumber)); // FIXME: Ultimately will want to use MiltiFileRun
 
   // Set to read in Hall C run database parameters
   run->SetRunParamClass("THcRunParameters");
@@ -367,9 +389,9 @@ void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type 
   // Define output ROOT file
   analyzer->SetOutFile(ROOTFileName.Data());
   // Define DEF-file
-  analyzer->SetOdefFile("DEF-files/LAD_COIN/PRODUCTION/coin_production_lad.def");
+  analyzer->SetOdefFile("DEF-files/LAD_COIN/PRODUCTION/coin_production_lad_only.def");
   // Define cuts file
-  analyzer->SetCutFile("DEF-files/LAD_COIN/PRODUCTION/CUTS/coin_production_cuts_lad.def"); // optional
+  analyzer->SetCutFile("DEF-files/LAD_COIN/PRODUCTION/CUTS/coin_production_cuts_lad_only.def"); // optional
   // File to record accounting information for cuts
   // analyzer->SetSummaryFile(SummaryFileName.Data()); // optional
 
