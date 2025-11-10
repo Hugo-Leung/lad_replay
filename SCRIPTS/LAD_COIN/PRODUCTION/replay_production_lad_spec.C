@@ -41,7 +41,7 @@ void load_GEM_CM_PED(int runNumber) {
       break;
     }
   }
-
+  //ped_cm_file_num =  23429; //22809; // Hardcode to run 22809 for now
   //gHcParms->AddString("lgem_pedfile", Form("PARAM/LAD/GEM/PED/gem_ped_%d.dat", ped_cm_file_num));
   gHcParms->AddString("lgem_pedfile", Form("PARAM/LAD/GEM/PED/daq_ped_L_gem_run%d.dat", ped_cm_file_num));
   gHcParms->AddString("lgem_cmfile", Form("PARAM/LAD/GEM/CM/db_cmr_L_gem_run%d.dat", ped_cm_file_num));
@@ -370,7 +370,6 @@ void replay_production_lad_spec(int RunNumber = 0, int MaxEvent = 0, int run_typ
   run->SetNscan(1);
   run->SetDataRequired(0x7);
   run->Print();
-
   // Moved file naming from here to top of script for transparency.
 
   analyzer->SetCountMode(2); // 0 = counter is # of physics triggers

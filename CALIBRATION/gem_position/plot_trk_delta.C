@@ -8,7 +8,7 @@
 #include <map>
 
 const int MAX_DATA  = 10000;
-const int maxTracks = 20;
+const int maxTracks = 500;
 const int nPlanes   = 5;
 
 const double d0_cut               = 20.0;
@@ -114,7 +114,8 @@ TVector3 GetHodoHitPosition(const int paddle, const int plane) {
 }
 
 void plot_trk_delta() {
-  int run_number = 400002;
+  int run_number = 300005;
+  //int run_number = 400002;
   // Get the GEM parameters for the run number
   auto it = runToGEMParams.find(run_number);
   if (it != runToGEMParams.end()) {
@@ -140,14 +141,32 @@ void plot_trk_delta() {
   }
 
   ///////////////////////////////////////////////////////////////////
-  TString fileName = "/volatile/hallc/c-lad/ehingerl/lad_replay/ROOTfiles/LAD_COIN/PRODUCTION/"
-                     //  "LAD_COIN_22282_-1_inverted.root";
+  //TString fileName = "/volatile/hallc/c-lad/ehingerl/lad_replay/ROOTfiles/LAD_COIN/PRODUCTION/"
+  /*TString fileName = "ROOTfiles/LAD_COIN/PRODUCTION/"
+                    "LAD_COIN_23105_0_0_50000.root"; 
+                    //  "LAD_COIN_22282_-1_inverted.root";
                      //  "LAD_COIN_22282_-1_500trks_good_timing.root";
-                     "LAD_COIN_22282_" + std::to_string(run_number) + ".root";
+                     //"LAD_COIN_22282_" + std::to_string(run_number) + ".root";*/
   //  "LAD_COIN_22073_-1.root";
-  TString outputFileName = "gem_pos_fixing_22282_"+std::to_string(run_number)+".root";
+  TString inList = "filelist_23467.txt";
+
+  std::ifstream fileList(inList);
+  if (!fileList.is_open()) {
+      std::cerr << "Error: Unable to open file list: " << inList << std::endl;
+      return;
+  }
+  TChain chain("T");
+  std::string line;
+  while (std::getline(fileList, line)) {
+      if (!line.empty()) {
+          chain.Add(line.c_str());
+      }
+  }
+
+
+  TString outputFileName = "gem_pos_fixing_23467_"+std::to_string(run_number)+".root";
   // Open the ROOT file
-  TFile *file = TFile::Open(fileName);
+  /*TFile *file = TFile::Open(fileName);
   if (!file || file->IsZombie()) {
     std::cerr << "Error: Cannot open the ROOT file!" << std::endl;
     return;
@@ -155,9 +174,11 @@ void plot_trk_delta() {
 
   // Get the TTree
   TTree *T = dynamic_cast<TTree *>(file->Get("T"));
+  */
+  TChain* T = &chain;
+  fileList.close();
   if (!T) {
     std::cerr << "Error: Cannot find the TTree named 'T'!" << std::endl;
-    file->Close();
     return;
   }
   // Define arrays to hold the data
@@ -207,10 +228,10 @@ void plot_trk_delta() {
   T->SetBranchAddress("H.ladkin.goodhit_hitphi_1", &kin_hitphi_1);
   T->SetBranchAddress("H.ladkin.goodhit_hitedep_0", &kin_hitedep_0);
   T->SetBranchAddress("H.ladkin.goodhit_hitedep_1", &kin_hitedep_1);
-  T->SetBranchAddress("H.ladkin.goodhit_deltapostrans_0", &kin_deltapostrans_0);
-  T->SetBranchAddress("H.ladkin.goodhit_deltapostrans_1", &kin_deltapostrans_1);
-  T->SetBranchAddress("H.ladkin.goodhit_deltaposlong_0", &kin_deltaposlong_0);
-  T->SetBranchAddress("H.ladkin.goodhit_deltaposlong_1", &kin_deltaposlong_1);
+  T->SetBranchAddress("H.ladkin.goodhit_dTrkHoriz_0", &kin_deltapostrans_0);
+  T->SetBranchAddress("H.ladkin.goodhit_dTrkHoriz_1", &kin_deltapostrans_1);
+  T->SetBranchAddress("H.ladkin.goodhit_dTrkVert_0", &kin_deltaposlong_0);
+  T->SetBranchAddress("H.ladkin.goodhit_dTrkVert_1", &kin_deltaposlong_1);
   T->SetBranchAddress("H.react.x", &vertex_x);
   T->SetBranchAddress("H.react.y", &vertex_y);
   T->SetBranchAddress("H.react.z", &vertex_z);
@@ -497,7 +518,7 @@ void plot_trk_delta() {
   h_target_xz->Write();
   // // Close the output file
   outputFile->Close();
-  file->Close();
+  //file->Close();
   // delete outputFile;
   // // Clean up
   // delete h_dx_dy;
