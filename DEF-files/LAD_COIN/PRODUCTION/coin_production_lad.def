@@ -33,42 +33,44 @@ block H.gem.*
 # block P.gem.trk*
 
 
-begin epics
-IBC3H00CRCUR4
-hac_bcm_average
-ibcm1
-ibcm2
-iunser
-itov3out
-itov4out
-IPM3H07A.XRAW
-IPM3H07A.YRAW
-IPM3H07B.XRAW
-IPM3H07B.YRAW
-IPM3H07C.XRAW
-IPM3H07C.YRAW
-end epics
+
+# begin epics
+# IBC3H00CRCUR4
+# hac_bcm_average
+# ibcm1
+# ibcm2
+# iunser
+# itov3out
+# itov4out
+# IPM3H07A.XRAW
+# IPM3H07A.YRAW
+# IPM3H07B.XRAW
+# IPM3H07B.YRAW
+# IPM3H07C.XRAW
+# IPM3H07C.YRAW
+# end epics
 
 
 ##include "DEF-files/LAD_COIN/PRODUCTION/HODO/ladhod_histos.def"
 ###include "DEF-files/LAD_COIN/PRODUCTION/HODO/ladhod_histos_expert_timing.def"
 #include "DEF-files/LAD_COIN/PRODUCTION/GEM/gem_histos.def"
 ##include "DEF-files/LAD_COIN/PRODUCTION/TRIG/lad_trig_histos.def"
-#
+
 ##include "DEF-files/HMS/PRODUCTION/TRIG/htrig_histos.def"
 ##include "DEF-files/HMS/PRODUCTION/CAL/hcal_histos.def"
 ##include "DEF-files/HMS/PRODUCTION/CER/hcer_histos.def"
 ##include "DEF-files/HMS/PRODUCTION/DC/hdc_histos.def"
 ##include "DEF-files/HMS/PRODUCTION/HODO/hhodo_histos.def"
-#
+
 ##include "DEF-files/HMS/PRODUCTION/KIN/hkin_histos.def"
 ##include "DEF-files/HMS/PRODUCTION/GTR/hgtr_histos.def"
 ##include "DEF-files/HMS/PRODUCTION/RASTER/hraster_histos.def"
 ##include "DEF-files/HMS/PRODUCTION/REACT/hreact_histos.def"
 ##include "DEF-files/HMS/PRODUCTION/PID/hpid_histos.def"
 ##include "DEF-files/HMS/PRODUCTION/EXTCOR/hextcor_histos.def"
-#
-#
+
+#include "DEF-files/HMS/PRODUCTION/EPICS/hepics_vars.def"
+
 ##include "DEF-files/SHMS/PRODUCTION/TRIG/ptrig_histos.def"
 ##include "DEF-files/SHMS/PRODUCTION/AERO/paero_histos.def"
 ##include "DEF-files/SHMS/PRODUCTION/CAL/pcal_histos.def"
@@ -83,3 +85,5 @@ end epics
 ##include "DEF-files/SHMS/PRODUCTION/REACT/preact_histos.def"
 ##include "DEF-files/SHMS/PRODUCTION/PID/ppid_histos.def"
 ##include "DEF-files/SHMS/PRODUCTION/EXTCOR/pextcor_histos.def"
+
+#include "DEF-files/SHMS/PRODUCTION/EPICS/pepics_vars.def"
