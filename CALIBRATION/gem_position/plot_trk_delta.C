@@ -8,7 +8,7 @@
 #include <map>
 
 const int MAX_DATA  = 10000;
-const int maxTracks = 500;
+const int maxTracks = 100;
 const int nPlanes   = 5;
 
 const double d0_cut               = 20.0;
@@ -25,7 +25,6 @@ struct GEMParams {
   double dx[2];    // GEM dx offsets
   double dy[2];    // GEM dy offsets
 };
-
 
 // Map to store GEMParams for each run number
 std::map<int, GEMParams> runToGEMParams = {
@@ -45,25 +44,25 @@ std::map<int, GEMParams> runToGEMParams = {
     {300012, {{127.0, 127.0}, {0.0, 0.0}, {77.571, 96.000}, {0.0, 1.5}, {0.0, 0.0}}},
 
     {300020, {{127.500, 127.500}, {0.0, 0.0}, {72.5324, 90.0596}, {3.64493, 4.50118}, {0.0, 0.0}}},
-    {300021, {{126.729, 126.729}, {0.0, 0.0}, {84.4906,104.183}, {-0.909749,-1.03288}, {0.0, 0.5}}},
+    {300021, {{126.729, 126.729}, {0.0, 0.0}, {84.4906, 104.183}, {-0.909749, -1.03288}, {0.0, 0.5}}},
     {300022, {{127.000, 127.000}, {0.0, 0.0}, {77.571, 95.571}, {0.0, 1.5}, {1.5, 1.5}}},
-    {300023, {{126.737, 126.737}, {0.0, 0.0}, {78.8751,97.0595}, {-0.0971787,-0.220268}, {1.5, 1.5}}},
-    {300024, {{124.410, 124.410}, {0.0, 0.0}, {67.9565,86.4893}, {-3.97332,-5.7903}, {1.5, 1.5}}},
-    {300025, {{125.425, 125.425}, {0.0, 0.0}, {85.8521,106.21}, {-4.26412,-5.16062}, {1.5, 1.5}}},
-    {300026, {{125.425, 125.425}, {0.0, 0.0}, {87.0633,105.807}, {-7.51136,-8.1162}, {1.5, 1.5}}},
-    {300027, {{127.941, 127.941}, {0.0, 0.0}, {83.714,102.727}, {-2.81105,-3.50819}, {1.5, 1.5}}},
+    {300023, {{126.737, 126.737}, {0.0, 0.0}, {78.8751, 97.0595}, {-0.0971787, -0.220268}, {1.5, 1.5}}},
+    {300024, {{124.410, 124.410}, {0.0, 0.0}, {67.9565, 86.4893}, {-3.97332, -5.7903}, {1.5, 1.5}}},
+    {300025, {{125.425, 125.425}, {0.0, 0.0}, {85.8521, 106.21}, {-4.26412, -5.16062}, {1.5, 1.5}}},
+    {300026, {{125.425, 125.425}, {0.0, 0.0}, {87.0633, 105.807}, {-7.51136, -8.1162}, {1.5, 1.5}}},
+    {300027, {{127.941, 127.941}, {0.0, 0.0}, {83.714, 102.727}, {-2.81105, -3.50819}, {1.5, 1.5}}},
     {300028, {{127.0, 127.0}, {0.0, 0.0}, {77.571, 95.571}, {1.5, 1.5}, {1.5, 1.5}}},
     {300029, {{127.0, 127.0}, {0.0, 0.0}, {77.571, 95.571}, {1.5, 1.5}, {1.5, 1.5}}}};
 
-double gem_theta      = 127.0;            // Angle in degrees
-double gem_phi  = 0.0;              // Angle in degrees
-double gem_r[2] = {77.571, 95.571}; // Radius of the GEM's
-double gem_dx[2] = {0.0, 0.0}; // GEM dx offsets
-double gem_dy[2] = {0.0, 0.0}; // GEM dy offsets
+double gem_theta = 127.0;            // Angle in degrees
+double gem_phi   = 0.0;              // Angle in degrees
+double gem_r[2]  = {77.571, 95.571}; // Radius of the GEM's
+double gem_dx[2] = {0.0, 0.0};       // GEM dx offsets
+double gem_dy[2] = {0.0, 0.0};       // GEM dy offsets
 
 const int nFixedz = 3;
-// const double fixedz[nFixedz] = {0.0}; // Fixed z positions for the planes
-const double fixedz[nFixedz] = {-10.0, 0.0, 10.0}; // Fixed z positions for the planes
+// const double target_z[nFixedz] = {0.0}; // Fixed z positions for the planes
+const double target_z[nFixedz] = {-10.0, 0.0, 10.0}; // Fixed z positions for the planes
 // const double z_range[nFixedz + 1] = {-15.0, -5.0, 5.0, 15.0}; // Tolerance range for the fixed z positions (low,
 // high)
 const double z_range[nFixedz + 1] = {-20.0, -5, 5.0, 20.0}; // Tolerance range for the fixed z positions (low,
@@ -128,7 +127,6 @@ void plot_trk_delta() {
     gem_dy[1] = it->second.dy[1];    // Use the second GEM's dy
   }
 
-  
   // Define the plane using three points
   TVector3 p1[2], p2[2], p3[2];
   for (int i = 0; i < 2; ++i) {
@@ -194,8 +192,8 @@ void plot_trk_delta() {
   Double_t kin_hittheta_0[MAX_DATA], kin_hittheta_1[MAX_DATA];
   Double_t kin_hitphi_0[MAX_DATA], kin_hitphi_1[MAX_DATA];
   Double_t kin_hitedep_0[MAX_DATA], kin_hitedep_1[MAX_DATA];
-  Double_t kin_deltapostrans_0[MAX_DATA], kin_deltapostrans_1[MAX_DATA];
-  Double_t kin_deltaposlong_0[MAX_DATA], kin_deltaposlong_1[MAX_DATA];
+  Double_t kin_dTrkHoriz_0[MAX_DATA], kin_dTrkHoriz_1[MAX_DATA];
+  Double_t kin_dTrkVert_0[MAX_DATA], kin_dTrkVert_1[MAX_DATA];
   Int_t nTracks, nGoodHits;
   Double_t vertex_x, vertex_y, vertex_z;
 
@@ -228,10 +226,10 @@ void plot_trk_delta() {
   T->SetBranchAddress("H.ladkin.goodhit_hitphi_1", &kin_hitphi_1);
   T->SetBranchAddress("H.ladkin.goodhit_hitedep_0", &kin_hitedep_0);
   T->SetBranchAddress("H.ladkin.goodhit_hitedep_1", &kin_hitedep_1);
-  T->SetBranchAddress("H.ladkin.goodhit_dTrkHoriz_0", &kin_deltapostrans_0);
-  T->SetBranchAddress("H.ladkin.goodhit_dTrkHoriz_1", &kin_deltapostrans_1);
-  T->SetBranchAddress("H.ladkin.goodhit_dTrkVert_0", &kin_deltaposlong_0);
-  T->SetBranchAddress("H.ladkin.goodhit_dTrkVert_1", &kin_deltaposlong_1);
+  T->SetBranchAddress("H.ladkin.goodhit_dTrkHoriz_0", &kin_dTrkHoriz_0);
+  T->SetBranchAddress("H.ladkin.goodhit_dTrkHoriz_1", &kin_dTrkHoriz_1);
+  T->SetBranchAddress("H.ladkin.goodhit_dTrkVert_0", &kin_dTrkVert_0);
+  T->SetBranchAddress("H.ladkin.goodhit_dTrkVert_1", &kin_dTrkVert_1);
   T->SetBranchAddress("H.react.x", &vertex_x);
   T->SetBranchAddress("H.react.y", &vertex_y);
   T->SetBranchAddress("H.react.z", &vertex_z);
@@ -327,18 +325,19 @@ void plot_trk_delta() {
       // Get the track ID associated with the hodo hit
       int trackID = static_cast<int>(kin_trackID_0[j]);
 
+      // cout << "Processing entry " << i << " with " << nTracks << " tracks and " << nGoodHits << " good hodo hits."
+      //      << endl;
+
       // Ensure the track ID is within bounds
       if (trackID < 0 || trackID >= nTracks) {
         continue;
       }
 
       // Apply the cuts
-      if (fabs(trk_d0[trackID]) < d0_cut && // d0 cut
-          kin_deltapostrans_0[j] > delta_trans_cut[0] &&
-          kin_deltapostrans_0[j] < delta_trans_cut[1] && // delta_pos_trans cut
-          kin_deltaposlong_0[j] > delta_long_cut[0] &&
-          kin_deltaposlong_0[j] < delta_long_cut[1]) { // delta_pos_long cut
-        if(goodTrack[trackID]) {
+      if (fabs(trk_d0[trackID]) < d0_cut &&                                                     // d0 cut
+          kin_dTrkHoriz_0[j] > delta_trans_cut[0] && kin_dTrkHoriz_0[j] < delta_trans_cut[1] && // delta_pos_trans cut
+          kin_dTrkVert_0[j] > delta_long_cut[0] && kin_dTrkVert_0[j] < delta_long_cut[1]) {     // delta_pos_long cut
+        if (goodTrack[trackID]) {
           std::cout << "Warning: Track ID " << trackID << " is already marked as good!" << std::endl;
         }
         goodTrack[trackID]  = true;
@@ -377,13 +376,13 @@ void plot_trk_delta() {
           if (use_projz) {
             if (trk_projz[j] > z_range[k] && trk_projz[j] < z_range[k + 1]) {
               good_vertez = true;
-              p_react.SetZ(fixedz[k]);
+              p_react.SetZ(target_z[k]);
               break;
             }
           } else {
             if (vertex_z > z_range[k] && vertex_z < z_range[k + 1]) {
               good_vertez = true;
-              p_react.SetZ(fixedz[k]);
+              p_react.SetZ(target_z[k]);
               break;
             }
           }
