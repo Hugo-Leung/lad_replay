@@ -52,8 +52,8 @@ block H.gem.*
 
 
 ##include "DEF-files/LAD_COIN/PRODUCTION/HODO/ladhod_histos.def"
-###include "DEF-files/LAD_COIN/PRODUCTION/HODO/ladhod_histos_expert_timing.def"
-#include "DEF-files/LAD_COIN/PRODUCTION/GEM/gem_histos.def"
+##include "DEF-files/LAD_COIN/PRODUCTION/HODO/ladhod_histos_expert_timing.def"
+##include "DEF-files/LAD_COIN/PRODUCTION/GEM/gem_histos.def"
 ##include "DEF-files/LAD_COIN/PRODUCTION/TRIG/lad_trig_histos.def"
 
 ##include "DEF-files/HMS/PRODUCTION/TRIG/htrig_histos.def"
@@ -78,7 +78,7 @@ block H.gem.*
 ##include "DEF-files/SHMS/PRODUCTION/HGCER/phgcer_histos.def"
 ##include "DEF-files/SHMS/PRODUCTION/HODO/phodo_histos.def"
 ##include "DEF-files/SHMS/PRODUCTION/NGCER/pngcer_histos.def"
-#
+
 ##include "DEF-files/SHMS/PRODUCTION/KIN/pkin_histos.def"
 ##include "DEF-files/SHMS/PRODUCTION/GTR/pgtr_histos.def"
 ##include "DEF-files/SHMS/PRODUCTION/RASTER/praster_histos.def"
