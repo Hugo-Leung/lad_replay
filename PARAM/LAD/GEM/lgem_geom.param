@@ -20,14 +20,14 @@ lgem_m0_apvmap = 1
 lgem_m1_apvmap = 1
 
 ; Positions, all units in cm
-lgem_m0_position =  0, 0, 83.4586; 2nd alignment pass
-lgem_m0_angle = 126.4617862, 0; deg 
-lgem_m0_rotation = 0, 0, 0; deg
+lgem_m0_position =  -2.93526e-07, 0.348115, 83.4623; 2nd alignment pass
+lgem_m0_angle = 126.647, 4.11081e-06; deg 
+lgem_m0_rotation = -2.99994, 1.47543, 6.22508e-06; deg
 
 
-lgem_m1_position = 0, 0, 104.1038928
-lgem_m1_angle = 126.5442879, 0; deg 
-lgem_m1_rotation = 0 , 0,  0; deg
+lgem_m1_position = -2.55463e-06, 0.264219, 104.104
+lgem_m1_angle = 126.544, -0.0137267; deg 
+lgem_m1_rotation = 1.36042 , 0.860734,  -1.3425e-05; deg
 
 lgem_d0_cut = 20000.0; cm
 
