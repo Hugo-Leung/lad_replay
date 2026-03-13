@@ -11,18 +11,21 @@ block H.hod.*time
 block H.hod.*Time
 block H.gtr.*
 block H.kin.*
-block H.*
+block H.react.*
 
 block P.hgcer.npe*
+block P.ngcer.npe*
 block P.cal.e*
 block P.hod.*time
 block P.hod.*Time
 block P.gtr.*
 block P.kin.*
-block P.*
+block P.react.*
 
 block P.ladhod.*
 block H.ladhod.*
+block H.ladkin.*
+block P.ladkin.*
 
 
 
