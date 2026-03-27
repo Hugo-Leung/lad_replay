@@ -22,3 +22,13 @@ l_rf_offset =   22013,          -0.15,      -3.65,
                 22745,          -0.28,      -1.82
 
 l_rf_period = 4.00801
+
+lladkin.z_cell_min = -20.0    ; cm
+lladkin.z_cell_max = +20.0    ; cm
+
+lladkin.theta_min  = 60.0  ; degree
+lladkin.theta_max  = 170.0 ; degree
+lladkin.phi_min    = -50.0 ; degree
+lladkin.phi_max    = +50.0 ; degree
+
+lladkin.chisq_cut  = 30, 25, 10;

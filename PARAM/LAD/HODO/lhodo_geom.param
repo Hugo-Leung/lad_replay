@@ -45,8 +45,6 @@ lladhodo_plane_names = "000 001 100 101 200 REFBAR"
       lladhodo_101_spacing = 22.0
       lladhodo_200_spacing = 22.0
       lladhodo_REFBAR_spacing = 22.0
-; y offset for each wall, placeholder not inuse
-      lladhodo_dy = 3.429 1.463 2.232 1.538 1.538 0
 ; X,Y positions of ladhodoscope paddles
       lladhodo_000_top  =     193.75
                               196.65
@@ -70,7 +68,7 @@ lladhodo_plane_names = "000 001 100 101 200 REFBAR"
                               -216.8
                               -219.65
                               -222.55
-      lladhodo_000_offset = 0; not used
+      lladhodo_000_offset = 3.429; y offset?
       lladhodo_000_center = 110.0
                          88.0
                          66.0
@@ -104,7 +102,7 @@ lladhodo_plane_names = "000 001 100 101 200 REFBAR"
                               -216.8
                               -219.65
                               -222.55
-      lladhodo_001_offset = 0; not used
+      lladhodo_001_offset = 1.463;
       lladhodo_001_center = 110.0
                          88.0
                          66.0
@@ -138,7 +136,7 @@ lladhodo_plane_names = "000 001 100 101 200 REFBAR"
                               -216.8
                               -219.65
                               -222.55
-      lladhodo_100_offset = 0; not used
+      lladhodo_100_offset = 2.232
       lladhodo_100_center = 110.0
                          88.0
                          66.0
@@ -172,7 +170,7 @@ lladhodo_plane_names = "000 001 100 101 200 REFBAR"
                               -216.8
                               -219.65
                               -222.55
-      lladhodo_101_offset = 0; not used
+      lladhodo_101_offset = 1.538
       lladhodo_101_center = 110.0
                          88.0
                          66.0
@@ -206,7 +204,7 @@ lladhodo_plane_names = "000 001 100 101 200 REFBAR"
                               -216.8
                               -219.65
                               -222.55
-      lladhodo_200_offset = 0; not used
+      lladhodo_200_offset = 1.538
       lladhodo_200_center = 110.0
                          88.0
                          66.0
