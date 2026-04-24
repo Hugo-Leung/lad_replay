@@ -1,11 +1,56 @@
 #include "LADFilteredStreamBuf.h"
 #include "MultiFileRun.h"
+#include "THcLADKine.h" // Include the header for THcLADKine
+#include <fstream>
 #include <iostream>
+#include <sstream>
+#include <string>
+#include <vector>
 
 // #include "../../LAD/LAD_link_defs.h" //Leave this line commented. Used for debugging purposes only.
 
+// Returns 1 if runNumber has a GEM CM PED file, 0 otherwise
+void load_GEM_CM_PED(int runNumber) {
+  std::vector<int> ped_cm_runs;
+  int ped_cm_runs_count = 0;
+
+  // Open the file
+  std::ifstream infile("PARAM/LAD/GEM/lgem_cm_ped_runs.param");
+  if (infile) {
+    std::string content((std::istreambuf_iterator<char>(infile)), std::istreambuf_iterator<char>());
+    std::stringstream ss(content);
+    std::string token;
+    while (std::getline(ss, token, ',')) {
+      std::stringstream token_ss(token);
+      int value;
+      if (token_ss >> value) {
+        ped_cm_runs.push_back(value);
+      }
+    }
+    ped_cm_runs_count = ped_cm_runs.size();
+  } else {
+    std::cerr << "Error: Could not open PARAM/LAD/GEM/lgem_cm_ped_runs.param" << std::endl;
+    ped_cm_runs_count = 0;
+  }
+  std::sort(ped_cm_runs.begin(), ped_cm_runs.end());
+
+  int ped_cm_file_num = ped_cm_runs[ped_cm_runs_count - 1]; // Default to the last run number in the list
+  for (int i = ped_cm_runs_count - 1; i > 0; --i) {
+    if (ped_cm_runs[i] < runNumber) {
+      ped_cm_file_num = ped_cm_runs[i];
+      break;
+    }
+  }
+
+  //gHcParms->AddString("lgem_pedfile", Form("PARAM/LAD/GEM/PED/gem_ped_%d.dat", ped_cm_file_num));
+  gHcParms->AddString("lgem_pedfile", Form("PARAM/LAD/GEM/PED/daq_ped_L_gem_run%d.dat", ped_cm_file_num));
+  gHcParms->AddString("lgem_cmfile", Form("PARAM/LAD/GEM/CM/db_cmr_L_gem_run%d.dat", ped_cm_file_num));
+  //gHcParms->AddString("lgem_cmfile", Form("PARAM/LAD/GEM/CM/CommonModeRange_%d.txt", ped_cm_file_num));
+  return;
+}
+
 void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type = 1, int FirstEvent = 1,
-                              int MaxSegment = 1, int FirstSegment = 0, const char *fname_prefix = "shms_all") {
+                                int MaxSegment = 0, int FirstSegment = 0) {
 
   // Get RunNumber and MaxEvent if not provided.
   if (RunNumber == 0) {
@@ -29,17 +74,15 @@ void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type 
   const char *RunFileNamePattern;
   const char *SummaryFileNamePattern;
   const char *REPORTFileNamePattern;
+
   if (MaxSegment == -1) {
     RunFileNamePattern = "%s_%05d.dat";
   } else {
-    // This will not pick up NPS runs since the run number was not padded
     RunFileNamePattern = "%s_%05d.dat.%u";
-    // NPS Segment Pattern, for testing
-    // RunFileNamePattern = "%s_%d.dat.%u";
   }
-  vector<TString> pathList;
+  vector<string> pathList;
   pathList.push_back(".");
-  pathList.push_back("./raw");
+  pathList.push_back("./raw/");
   pathList.push_back("./raw/../raw.copiedtotape");
   pathList.push_back("./cache");
   pathList.push_back("/cache/hallc/c-lad/raw/");
@@ -47,82 +90,51 @@ void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type 
   const char *ROOTFileNamePattern;
   TString ROOTFileName;
   pathList.push_back("/volatile/hallc/c-lad/ehingerl/raw_data/LAD_cosmic");
-  ROOTFileNamePattern = "ROOTfiles/LAD_COIN/PRODUCTION//SPEC_ONLY_%d_%d.root";
-  // ROOTFileNamePattern = "ROOTfiles/LAD_COIN/PRODUCTION/LAD_COIN_production_hall_%d_%d.root";
-  // ROOTFileNamePattern = "ROOTfiles/LAD_COIN/CALIBRATION/LAD_COIN_calibration_hall_%d_%d.root";
+
+  const char *fname_prefix;
   switch (run_type) {
   case 0:
-    RunFileNamePattern = "lad_Production_%02d.dat.0";
+    fname_prefix = "lad_Production";
     break;
   case 1:
-    RunFileNamePattern = "lad_Production_noGEM_%02d.dat.0";
+    fname_prefix = "lad_Production_noGEM";
     break;
   case 2:
-    RunFileNamePattern = "lad_LADwGEMwROC2_%02d.dat.0";
+    fname_prefix = "lad_LADwGEMwROC2";
     break;
   case 3:
-    RunFileNamePattern = "lad_GEMonly_%02d.dat.0";
+    fname_prefix = "lad_GEMonly";
     break;
   case 4:
-    RunFileNamePattern = "lad_LADonly_%02d.dat.0";
+    fname_prefix = "lad_LADonly";
     break;
   case 5:
-    RunFileNamePattern = "lad_SHMS_HMS_%02d.dat.0";
+    fname_prefix = "lad_SHMS_HMS";
     break;
   case 6:
-    RunFileNamePattern = "lad_SHMS_%02d.dat.0";
+    fname_prefix = "lad_SHMS";
     break;
   case 7:
-    RunFileNamePattern = "lad_HMS_%02d.dat.0";
+    fname_prefix = "lad_HMS";
     break;
   default:
     cout << "Invalid run type: " << run_type << ". Please enter a valid run type." << endl;
     return;
     break;
   }
-  ROOTFileName = Form(ROOTFileNamePattern, RunNumber, MaxEvent);
 
   //(CA)
   TString REPORTFileName;
-  REPORTFileNamePattern = "REPORT_OUTPUT/LAD_COIN/PRODUCTION/replayReport_LAD_coin_production_%d_%d_%d.report";
-  REPORTFileName        = Form(REPORTFileNamePattern, RunNumber, FirstEvent, MaxEvent);
+  REPORTFileNamePattern = "REPORT_OUTPUT/LAD_COIN/PRODUCTION/replayReport_LAD_coin_production_%d_%d_%d_%d_%d.report";
+  REPORTFileName        = Form(REPORTFileNamePattern, RunNumber, FirstSegment, MaxSegment, FirstEvent, MaxEvent);
 
-  // LHE. End temp.
-  //  Many experiments use separate path for each spectrometer SHMS, HMS, COIN
-  //  There are subdirectories for PRODUCTION, SCALER, 50K, etc.
-  //  This is similar to the pathing for REPORT_OUTPUT and Summary files
-  //  Changing the 50K replay loaction will effect run_ scripts in UTIL_OL
-  //  All other replays, save to production
-  //  50K and default format: runNumber, FirstEvent, MaxEvent
-  //  For the segment format: runNumber, FirstSegment, FirstEvent, MaxEvent
-  //  Segments have different naming to avoid name collisions
+  ROOTFileNamePattern = "ROOTfiles/LAD_COIN/PRODUCTION/LAD_COIN_%d_%d_%d_%d_%d.root";
+  ROOTFileName        = Form(ROOTFileNamePattern, RunNumber, FirstSegment, MaxSegment, FirstEvent, MaxEvent);
+  // ROOTFileNamePattern = "ROOTfiles/LAD_COIN/PRODUCTION/LAD_COIN_production_hall_%d_%d.root";
+  // ROOTFileNamePattern = "ROOTfiles/LAD_COIN/CALIBRATION/LAD_COIN_calibration_hall_%d_%d.root";
 
-  // if (MaxEvent == 50000 && FirstEvent == 1) {
-  //   REPORTFileNamePattern  = "REPORT_OUTPUT/SHMS/PRODUCTION/replay_shms_all_production_%d_%d_%d.report";
-  //   SummaryFileNamePattern = "REPORT_OUTPUT/SHMS/PRODUCTION/summary_all_production_%d_%d_%d.report";
-  //   ROOTFileNamePattern    = "ROOTfiles/shms_replay_production_all_%d_%d_%d.root";
-  // } else if (MaxEvent == -1 && (FirstSegment - MaxSegment) == 0) {
-  //   REPORTFileNamePattern  = "REPORT_OUTPUT/SHMS/PRODUCTION/replay_shms_all_production_%d_%d_%d_%d.report";
-  //   SummaryFileNamePattern = "REPORT_OUTPUT/SHMS/PRODUCTION/summary_all_production_%d_%d_%d_%d.report";
-  //   ROOTFileNamePattern    = "ROOTfiles/shms_replay_production_all_%d_%d_%d_%d.root";
-  // } else {
-  //   REPORTFileNamePattern  = "REPORT_OUTPUT/SHMS/PRODUCTION/replay_shms_all_production_%d_%d_%d.report";
-  //   SummaryFileNamePattern = "REPORT_OUTPUT/SHMS/PRODUCTION/summary_all_production_%d_%d_%d.report";
-  //   ROOTFileNamePattern    = "ROOTfiles/shms_replay_production_all_%d_%d_%d.root";
-  // }
-  // // Define the analysis parameters
-  // TString ROOTFileName;
-  // TString REPORTFileName;
-  // TString SummaryFileName;
-  // if (MaxEvent == -1 && (FirstSegment - MaxSegment) == 0) {
-  //   REPORTFileName  = Form(REPORTFileNamePattern, RunNumber, FirstSegment, FirstEvent, MaxEvent);
-  //   SummaryFileName = Form(SummaryFileNamePattern, RunNumber, FirstSegment, FirstEvent, MaxEvent);
-  //   ROOTFileName    = Form(ROOTFileNamePattern, RunNumber, FirstSegment, FirstEvent, MaxEvent);
-  // } else {
-  //   REPORTFileName  = Form(REPORTFileNamePattern, RunNumber, FirstEvent, MaxEvent);
-  //   SummaryFileName = Form(SummaryFileNamePattern, RunNumber, FirstEvent, MaxEvent);
-  //   ROOTFileName    = Form(ROOTFileNamePattern, RunNumber, FirstEvent, MaxEvent);
-  // }
+  // LHE.
+  // Consider changing naming scheme for root files. Also, consider adding summary file (in addition to report file).
 
   // Load global parameters
   gHcParms->Define("gen_run_number", "Run Number", RunNumber);
@@ -138,7 +150,6 @@ void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type 
 
   if (RunNumber > 22589)
     gHcParms->Load("PARAM/LAD/HODO/lhodo_cuts_May16.param");
-
   // Load the Hall C detector map
   // Load map depending on whether run is before or after SHMS DC swap
   gHcDetectorMap = new THcDetectorMap();
@@ -149,6 +160,7 @@ void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type 
   else
     gHcDetectorMap->Load("MAPS/LAD_COIN/DETEC/coin_lad_5pass_May14.map");
 
+  //load_GEM_CM_PED(RunNumber);
   // Add the dec data class for debugging
   // Podd::DecData *decData = new Podd::DecData("D", "Decoder Raw Data");
   // gHaApps->Add(decData);
@@ -193,11 +205,11 @@ void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type 
   THcShower *pcal = new THcShower("cal", "Calorimeter");
   SHMS->AddDetector(pcal);
 
-  // THcLADHodoscope *shms_lhod = new THcLADHodoscope("ladhod", "LAD Hodoscope");
-  // SHMS->AddDetector(shms_lhod);
+  //THcLADHodoscope *shms_lhod = new THcLADHodoscope("ladhod", "LAD Hodoscope");
+  //SHMS->AddDetector(shms_lhod);
 
-  // THcLADGEM *shms_gem = new THcLADGEM("gem", "gem");
-  // SHMS->AddDetector(shms_gem);
+  //THcLADGEM *shms_gem = new THcLADGEM("gem", "gem");
+  //SHMS->AddDetector(shms_gem);
 
   // Add rastered beam apparatus
   THaApparatus *pbeam = new THcRasteredBeam("P.rb", "Rastered Beamline");
@@ -218,6 +230,9 @@ void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type 
   // Calculate the hodoscope efficiencies
   THcHodoEff *peff = new THcHodoEff("phodeff", "SHMS hodo efficiency", "P.hod");
   gHaPhysics->Add(peff);
+
+  //THcLADKine *ladkin_p = new THcLADKine("P.ladkin", "LAD Kinematics", "P", "P.kin", "P.react");
+  //gHaPhysics->Add(ladkin_p);
 
   // Add event handler for scaler events
   THcScalerEvtHandler *pscaler = new THcScalerEvtHandler("P", "Hall C scaler event type 1");
@@ -288,6 +303,9 @@ void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type 
   THcHodoEff *heff = new THcHodoEff("hhodeff", "HMS hodo efficiency", "H.hod");
   gHaPhysics->Add(heff);
 
+  // THcLADKine *ladkin_h = new THcLADKine("H.ladkin", "LAD Kinematics", "H", "H.kin", "H.react");
+  // gHaPhysics->Add(ladkin_h);
+
   // Add event handler for prestart event 125.
   THcConfigEvtHandler *ev125 = new THcConfigEvtHandler("HC", "Config Event type 125");
   gHaEvtHandlers->Add(ev125);
@@ -315,6 +333,8 @@ void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type 
   // tests/cuts, loops over Acpparatus's and PhysicsModules,
   // and executes the output routines.
   THcAnalyzer *analyzer = new THcAnalyzer;
+  analyzer->EnableAltEvType(true);
+  
 
   // A simple event class to be output to the resulting tree.
   // Creating your own descendant of THaEvent is one way of
@@ -325,42 +345,48 @@ void replay_production_no_lad(int RunNumber = 0, int MaxEvent = 0, int run_type 
   // THcRun* run = new THcRun( pathList, Form(RunFileNamePattern, RunNumber) );
   // Could lead to an infinite loop, all segments in range analyzed.
 
-  // vector<string> fileNames = {};
-  // TString codafilename;
-  // if (MaxSegment == -1) {
-  //   cout << RunFileNamePattern;
-  //   codafilename.Form(RunFileNamePattern, fname_prefix, RunNumber);
-  //   cout << "codafilename = " << codafilename << endl;
-  //   fileNames.emplace_back(codafilename.Data());
-  // } else {
-  //   for (Int_t iseg = FirstSegment; iseg <= MaxSegment; iseg++) {
-  //     codafilename.Form(RunFileNamePattern, fname_prefix, RunNumber, iseg);
-  //     cout << "codafilename = " << codafilename << endl;
-  //     fileNames.emplace_back(codafilename.Data());
-  //   }
-  // }
-  // auto *run = new Podd::MultiFileRun(pathList, fileNames);
-  THcRun *run =
-      new THcRun(pathList, Form(RunFileNamePattern, RunNumber)); // FIXME: Ultimately will want to use MiltiFileRun
+  vector<string> fileNames = {};
+  TString codafilename;
+  if (MaxSegment == -1) {
+    cout << RunFileNamePattern;
+    codafilename.Form(RunFileNamePattern, fname_prefix, RunNumber);
+    cout << "codafilename = " << codafilename << endl;
+    fileNames.emplace_back(codafilename.Data());
+  } else {
+    for (Int_t iseg = FirstSegment; iseg <= MaxSegment; iseg++) {
+      codafilename.Form(RunFileNamePattern, fname_prefix, RunNumber, iseg);
+      cout << "codafilename = " << codafilename << endl;
+      fileNames.emplace_back(codafilename.Data());
+    }
+  }
+
+  auto *run = new Podd::MultiFileRun(pathList, fileNames);
+  // THcRun *run =
+  //     new THcRun(pathList, Form(RunFileNamePattern, RunNumber)); // FIXME: Ultimately will want to use MiltiFileRun
 
   // Set to read in Hall C run database parameters
   run->SetRunParamClass("THcRunParameters");
 
   // Eventually need to learn to skip over, or properly analyze the pedestal events
-  run->SetEventRange(1, MaxEvent); // Physics Event number, does not include scaler or control events.
+  run->SetEventRange(FirstEvent, FirstEvent+MaxEvent); // Physics Event number, does not include scaler or control events.
   run->SetNscan(1);
   run->SetDataRequired(0x7);
   run->Print();
 
   // Moved file naming from here to top of script for transparency.
 
-  analyzer->SetCountMode(2); // 0 = counter is # of physics triggers
+  analyzer->SetCountMode(1); // 0 = counter is # of physics triggers
                              // 1 = counter is # of all decode reads
                              // 2 = counter is event number
   analyzer->SetEvent(event);
+
   // Set EPICS event type
   analyzer->SetEpicsEvtType(181);
   analyzer->AddEpicsEvtType(182);
+  analyzer->AddEpicsEvtType(183);
+  analyzer->AddEpicsEvtType(184);
+  analyzer->AddEpicsEvtType(185);
+  analyzer->AddEpicsEvtType(186);
   // Define crate map
   analyzer->SetCrateMapFileName("MAPS/db_cratemap.dat");
   // analyzer->SetCrateMapFileName("MAPS/db_cratemap_lad.dat");// Temp set it to only LAD to avoid error
