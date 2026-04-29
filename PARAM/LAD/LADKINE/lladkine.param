@@ -31,4 +31,4 @@ lladkin.theta_max  = 2.96705972839; 170.0  degree
 lladkin.phi_min    = -0.87266462599; -50.0  degree
 lladkin.phi_max    =  0.87266462599; +50.0  degree
 
-lladkin.chisq_cut  = 30, 25, 10;
+lladkin.chisq_cut  = 20, 15;
