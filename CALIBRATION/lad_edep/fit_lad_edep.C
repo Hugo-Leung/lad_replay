@@ -22,10 +22,9 @@ const string side_names[N_SIDES]   = {"Top", "Btm"};
 const double fit_func_xmin = 0.8; // Minimum x value for fit function
 const double fit_func_xmax = 3; // Maximum x value for fit function
 
-const double quad_fit_param[2] = {164, 42};
-//const double quad_fit_param[2] = {5.31637, 12.9101};
-double cut_line_pt1[2]   = {0, 200}; // Point 1 for cut line
-const double cut_line_pt2[2]   = {2, 0};   // Point 2 for cut line
+const double quad_fit_param[2] = {5.31637, 12.9101};
+double cut_line_pt1[2]         = {2, 120}; // Point 1 for cut line
+const double cut_line_pt2[2]   = {6, 0};   // Point 2 for cut line
 
 const double true_adc_MeV = 80; // True ADC value in MeV
 
@@ -53,31 +52,58 @@ double edep_fit_func_profile(double *x, double *par) {
 	return par[0] * y;
 }
 
+// double edep_fit_func_profile_quad_back(double *x, double *par) {
+//   double y;
+//   // Fit two quadratics: one for x < x_mid, one for x >= x_mid
+//   // par[0]: scaling
+//   // par[1]: a_left, par[2]: b_left, par[3]: c_left
+//   // par[4]: a_right, par[5]: b_right, par[6]: c_right
+//   double x_mid = 3.1;
+//   double x1, y1, x2, y2, a;
+//   if (x[0] < x_mid) {
+//     // Quadratic passing through (1,20) and (3.3,190)
+//     // One free parameter
+//     x1 = 1.0, y1 = 20.0;
+//     x2 = x_mid, y2 = 190.0;
+//     a = quad_fit_param[0];
+//   } else {
+//     // Quadratic passing through (3.3,190) and (7,20)
+//     x1 = x_mid, y1 = 190.0;
+//     x2 = 6.0, y2 = 10.0;
+//     a = quad_fit_param[1];
+//   }
+//   // double a = par[0];
+//   double b_tmp = (y2 - y1 - a * (x2 * x2 - x1 * x1)) / (x2 - x1);
+//   y            = a * (x[0] * x[0] - x1 * x1) + b_tmp * (x[0] - x1) + y1;
+
+//   return y * par[0]; // Scale by par[0]
+// }
+
 double edep_fit_func_profile_quad_back(double *x, double *par) {
-	double y;
-	// Fit two quadratics: one for x < x_mid, one for x >= x_mid
-	// par[0]: scaling
-	// par[1]: a_left, par[2]: b_left, par[3]: c_left
-	// par[4]: a_right, par[5]: b_right, par[6]: c_right
-	double x_mid = 1.5;
-	double x1, y1, x2, y2, a;
-	if (x[0] < x_mid) {
-		// Quadratic passing through (1,20) and (3.3,190)
-		// One free parameter
-		x1 = 0.8, y1 = 116;
-		x2 = x_mid, y2 = 210.0;
-		//a = par[1];
-		a = quad_fit_param[0];
-	} else {
-		// Quadratic passing through (3.3,190) and (7,20)
-		x1 = x_mid, y1 = 210;
-		x2 = 3.0, y2 = 107;
-		//a = par[4];
-		a = quad_fit_param[1];
-	}
-	// double a = par[0];
-	double b_tmp = (y2 - y1 - a * (x2 * x2 - x1 * x1)) / (x2 - x1);
-	y            = a * (x[0] * x[0] - x1 * x1) + b_tmp * (x[0] - x1) + y1;
+  double y;
+  // Fit two quadratics: one for x < x_mid, one for x >= x_mid
+  // par[0]: scaling
+  // par[1]: a_left, par[2]: b_left, par[3]: c_left
+  // par[4]: a_right, par[5]: b_right, par[6]: c_right
+  double x_mid = 3.1;
+  double x1, y1, x2, y2, a;
+  if (x[0] < x_mid) {
+    // Quadratic passing through (1,20) and (3.3,190)
+    // One free parameter
+    x1 = 0.8, y1 = 116;
+    x2 = x_mid, y2 = 210.0;
+    // a = par[1];
+    a = quad_fit_param[0];
+  } else {
+    // Quadratic passing through (3.3,190) and (7,20)
+    x1 = x_mid, y1 = 210;
+    x2 = 3.0, y2 = 107;
+    // a = par[4];
+    a = quad_fit_param[1];
+  }
+  // double a = par[0];
+  double b_tmp = (y2 - y1 - a * (x2 * x2 - x1 * x1)) / (x2 - x1);
+  y            = a * (x[0] * x[0] - x1 * x1) + b_tmp * (x[0] - x1) + y1;
 
 	return y * par[0]; // Scale by par[0]
 }
@@ -133,25 +159,23 @@ TGraph* get_peak_graph(HistType* hist) {
 }
 
 void fit_lad_edep() {
-	// Set ROOT to batch mode to suppress GUI
-	gROOT->SetBatch(kTRUE);
-	// TFile *file = TFile::Open("lad_edep_plots_22609_H.root", "READ");
-	TFile *file = TFile::Open("lad_edep_plots_new_timing_H.root", "READ");
-	//TFile *file = TFile::Open("lad_edep_plots_LD2_setting3_P.root", "READ");
-	//TFile *file = TFile::Open("lad_edep_plots_C3_23105_23109_P.root", "READ");
-	if (!file || file->IsZombie()) {
-		printf("Error: Cannot open ROOT file.\n");
-		return;
-	}
+  // Set ROOT to batch mode to suppress GUI
+  gROOT->SetBatch(kTRUE);
+  // TFile *file = TFile::Open("lad_edep_plots_22609_H.root", "READ");
+  TFile *file = TFile::Open("lad_edep_plots_FT_post_gain_H.root", "READ");
+  if (!file || file->IsZombie()) {
+    printf("Error: Cannot open ROOT file.\n");
+    return;
+  }
 
-	TFile *outfile = TFile::Open("fit_lad_edep_new_timing.root", "RECREATE");
-	if (!outfile || outfile->IsZombie()) {
-		printf("Error: Cannot create output ROOT file.\n");
-		file->Close();
-		return;
-	}
-	string hist_names[2] = {"KIN/TDC_DIFF_VS_ADC_AMP/c_TDC_DIFF_VS_ADC_AMP_plane_%s",
-		"KIN/TDC_DIFF_VS_ADC_INT/c_TDC_DIFF_VS_ADC_INT_plane_%s"};
+  TFile *outfile = TFile::Open("fit_lad_edep_FT_post_gain.root", "RECREATE");
+  if (!outfile || outfile->IsZombie()) {
+    printf("Error: Cannot create output ROOT file.\n");
+    file->Close();
+    return;
+  }
+  string hist_names[2] = {"KIN/TDC_DIFF_VS_ADC_AMP/c_TDC_DIFF_VS_ADC_AMP_plane_%s",
+                          "KIN/TDC_DIFF_VS_ADC_INT/c_TDC_DIFF_VS_ADC_INT_plane_%s"};
 
 	double raw_adc_max[2][N_PLANES][N_PADDLES] = {0};
 	for (int i_hist = 0; i_hist < 2; ++i_hist) {
@@ -197,6 +221,38 @@ void fit_lad_edep() {
           if (!profile) {
             cout << "No profile found for plane " << i_plane << ", paddle " << j << endl;
             continue;
+          c1->cd(++pad_idx);
+          TProfile *profile = new TProfile("profile", "Profile above line", hist->GetNbinsX(),
+                                           hist->GetXaxis()->GetXmin(), hist->GetXaxis()->GetXmax());
+
+          for (int binx = 1; binx <= hist->GetNbinsX(); ++binx) {
+            double x = hist->GetXaxis()->GetBinCenter(binx);
+            // Calculate y_line as the y value on the line connecting cut_line_pt1 and cut_line_pt2 at position x
+            // Calculate the average y value of the histogram for this x bin
+            // You can use the TH2::ProjectionY method to get the Y projection for a given X bin,
+            // then use GetMean() on the resulting TH1D to get the average Y for that X bin.
+            TH1D *projY   = hist->ProjectionY("_py", binx, binx);
+            double y_mean = (projY->GetEntries() > 0) ? projY->GetMean() : 0;
+            delete projY;
+            TH1D *projX   = hist->ProjectionX("_px", binx, binx);
+            double x_mean = (projX->GetEntries() > 0) ? projX->GetMean() : 0;
+            delete projX;
+
+            double x1 = x_mean, y1 = y_mean * 4;
+            double x2 = cut_line_pt2[0], y2 = cut_line_pt2[1];
+            double m      = (y2 - y1) / (x2 - x1);
+            double b      = y1 - m * x1;
+            double y_line = m * x + b;
+            for (int biny = 1; biny <= hist->GetNbinsY(); ++biny) {
+              double y = hist->GetYaxis()->GetBinCenter(biny);
+              if (y > y_line) {
+                double content = hist->GetBinContent(binx, biny);
+                // Fill the profile with y, weighted by the bin content
+                for (int k = 0; k < int(content); ++k) {
+                  profile->Fill(x, y);
+                }
+              }
+            }
           }
           profile->SetLineColor(kRed);
 					/*for (int binx = 1; binx <= hist->GetNbinsX(); ++binx) {
@@ -212,22 +268,17 @@ void fit_lad_edep() {
 					double x_mean = (projX->GetEntries() > 0) ? projX->GetMean() : 0;
 					delete projX;
 
-					double x1 = cut_line_pt1[0], y1 = cut_line_pt1[1];
-					double x2 = cut_line_pt2[0], y2 = cut_line_pt2[1];
-					double m      = (y2 - y1) / (x2 - x1);
-					double b      = y1 - m * x1;
-					double y_line = m * x + b;
-					for (int biny = 1; biny <= hist->GetNbinsY(); ++biny) {
-					double y = hist->GetYaxis()->GetBinCenter(biny);
-					//if (y > y_line) {
-					double content = hist->GetBinContent(binx, biny);
-					// Fill the profile with y, weighted by the bin content
-					for (int k = 0; k < int(content); ++k) {
-					profile->Fill(x, y);
-					}
-					//}
-					}
-					}*/
+          hist->Draw("colz");
+          if (profile) {
+            profile->Draw("same");
+            TF1 *edep_func;
+            if (i_plane % 2 == 0) {
+              edep_func = new TF1("edep_fit_func_profile_quad_front", edep_fit_func_profile_quad_front, fit_func_xmin,
+                                  fit_func_xmax, 1);
+            } else {
+              edep_func = new TF1("edep_fit_func_profile_quad_back", edep_fit_func_profile_quad_back, fit_func_xmin,
+                                  fit_func_xmax, 1);
+            }
 
 					hist->Draw("colz");
 					if (profile) {
@@ -284,9 +335,21 @@ void fit_lad_edep() {
 
 	// Write fit results to param file
 
-	ofstream outPARAM(Form("../../PARAM/LAD/HODO/ladhodo_edep.param"));
-	outPARAM << "; LAD Hodoscope Edep Fit Parameters\n";
-	outPARAM << endl << endl;
+  outPARAM << "lladhodo_adcAmp2MeV = ";
+  for (int i_paddle = 0; i_paddle < N_PADDLES; ++i_paddle) {
+    for (int i_plane = 0; i_plane < N_PLANES; ++i_plane) {
+      if (i_plane == 0) {
+        if (i_paddle == 0) {
+          outPARAM << true_adc_MeV / raw_adc_max[0][i_plane][i_paddle];
+        } else {
+          outPARAM << setw(30) << true_adc_MeV / raw_adc_max[0][i_plane][i_paddle];
+        }
+      } else {
+        outPARAM << ", " << setw(15) << true_adc_MeV / raw_adc_max[0][i_plane][i_paddle];
+      }
+    }
+    outPARAM << fixed << endl;
+  }
 
 	outPARAM << "lladhodo_adcAmp2MeV = ";
 	for (int i_paddle = 0; i_paddle < N_PADDLES; ++i_paddle) {
@@ -305,9 +368,21 @@ void fit_lad_edep() {
 		outPARAM << fixed << endl;
 	}
 
-	outPARAM << " " << endl;
-	outPARAM << " " << endl;
-	outPARAM << " " << endl;
+  outPARAM << "lladhodo_adcInt2MeV = ";
+  for (int i_paddle = 0; i_paddle < N_PADDLES; ++i_paddle) {
+    for (int i_plane = 0; i_plane < N_PLANES; ++i_plane) {
+      if (i_plane == 0) {
+        if (i_paddle == 0) {
+          outPARAM << true_adc_MeV / raw_adc_max[1][i_plane][i_paddle];
+        } else {
+          outPARAM << setw(30) << true_adc_MeV / raw_adc_max[1][i_plane][i_paddle];
+        }
+      } else {
+        outPARAM << ", " << setw(15) << true_adc_MeV / raw_adc_max[1][i_plane][i_paddle];
+      }
+    }
+    outPARAM << fixed << endl;
+  }
 
 	outPARAM << "lladhodo_adcInt2MeV = ";
 	for (int i_paddle = 0; i_paddle < N_PADDLES; ++i_paddle) {
