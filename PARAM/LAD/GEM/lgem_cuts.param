@@ -1,7 +1,7 @@
 ; LAD GEM flags and parameters
 
 ; flags
-lgem_commonmode_flag = 2; 0: cm_sorting, 1: cm_danning, 2: cm_histo
+lgem_commonmode_flag = 1; 0: cm_sorting, 1: cm_danning, 2: cm_histo
 lgem_zerosuppress = 1 ; 1: do zero supress ofline
 lgem_zerosuppress_nsigma = 5.0
 lgem_onlinezerosuppress = 0 ; 1: zero supress is being done online
@@ -24,7 +24,7 @@ lgem_commonmode_minstrips = 20
 
 lgem_usestriptimingcut = 1
 ;lgem_useTSchi2cut = 0
-;lgem_suppressfirstlast = 0
+lgem_suppressfirstlast = 1
 
 lgem_clustering_flag = 0
 
